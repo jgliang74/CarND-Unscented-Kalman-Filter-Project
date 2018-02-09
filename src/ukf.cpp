@@ -27,7 +27,7 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1;
+  std_a_ = 1.5;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.6;
@@ -142,6 +142,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
    float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;
    time_us_ = meas_package.timestamp_;
 
+   cout << "dt value: " << dt << endl;
+
    Prediction(dt);
 
   /*****************************************************************************
@@ -210,8 +212,6 @@ void UKF::Prediction(double delta_t) {
     Xsig_aug.col(i+1+n_aug_) = x_aug - sqrt(lambda_+n_aug_) * L.col(i);
   }
 
-  cout << "Xsig_aug: " << endl << Xsig_aug << endl;
-
   //predict sigma points
   for (int i = 0; i< 2*n_aug_+1; i++)
   {
@@ -256,8 +256,6 @@ void UKF::Prediction(double delta_t) {
     Xsig_pred_(3,i) = yaw_p;
     Xsig_pred_(4,i) = yawd_p;
   }
-
-  cout << "Xsig_pred: " << endl << Xsig_pred_ << endl;
 
   //
   // predicted state mean
@@ -373,9 +371,12 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
 
+  //
   // now we calculate NIS
-  float nis_value;
-  nis_value = z_diff.transpose() * S.inverse() * z_diff;
+  //
+  float nis_value = CalculateNIS(z_diff, S);
+
+  // cout << "NIS value: " << nis_value << endl;
 }
 
 /**
@@ -504,6 +505,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package)
   P_ = P_ - K*S*K.transpose();
 
   // now we calculate NIS
-  float nis_value;
-  nis_value = z_diff.transpose() * S.inverse() * z_diff;
+  float nis_value = CalculateNIS(z_diff, S);
+
+  // cout << "NIS value: " << nis_value << endl;
+}
+
+float UKF::CalculateNIS(VectorXd z_diff, MatrixXd S)
+{
+   return z_diff.transpose() * S.inverse() * z_diff;
 }
